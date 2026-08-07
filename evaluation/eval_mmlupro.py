@@ -61,12 +61,13 @@ def get_prediction(output):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model_path", type=str, required=True, help="Path to the model directory")
-    parser.add_argument("--output_file", type=str, default="outputs.json", help="File to save results")
+    parser.add_argument("--model_path", type=str, required=True, help="HF id or local path (e.g. Qwen/Qwen3-1.7B-Base or merged checkpoint)")
+    parser.add_argument("--output_file", type=str, default="outputs-mmlupro-qwen3-1.7b.json", help="File to save results")
+    parser.add_argument("--tensor_parallel_size", type=int, default=1, help="vLLM tensor parallel size (1 is enough for 1.7B)")
     args = parser.parse_args()
     
-    tokenizer = AutoTokenizer.from_pretrained(args.model_path)
-    llm = LLM(model=args.model_path, tensor_parallel_size=4)
+    tokenizer = AutoTokenizer.from_pretrained(args.model_path, trust_remote_code=True)
+    llm = LLM(model=args.model_path, tensor_parallel_size=args.tensor_parallel_size, trust_remote_code=True)
     dataset = datasets.load_dataset('TIGER-Lab/MMLU-Pro')
     
     categories = ['computer science', 'math', 'chemistry', 'engineering', 'law', 'biology',

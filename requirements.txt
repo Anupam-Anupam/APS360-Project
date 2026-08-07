@@ -1,0 +1,13 @@
+# APS360 training stack (Tinker GRPO + local verifier)
+tinker>=0.8.0
+chz>=0.4.0
+torch>=2.4.0
+transformers>=4.50.0
+datasets>=3.0.0
+vllm>=0.6.0
+peft>=0.14.0
+accelerate
+safetensors
+huggingface_hub
+pandas
+tabulate
