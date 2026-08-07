@@ -1,6 +1,7 @@
 """
-APS360 — GRPO (Zero-RL) training for Qwen/Qwen3-1.7B on mathematics-only data.
+APS360 — GRPO (Zero-RL) training for Qwen/Qwen3-1.7B on mathematics data.
 
+Dataset: anupamc/math-dataset (prepared in Colab; question/answer columns).
 Uses the Tinker API for LoRA updates and a local vLLM verifier
 (TIGER-Lab/general-verifier) for LLM-as-a-judge rewards.
 
@@ -204,8 +205,9 @@ class Config:
     base_url: str | None = None
     log_path: str = "./log_qwen3_1p7b_math_grpo"
     model_name: str = "Qwen/Qwen3-1.7B"  # backbone_hgf_id
-    dataset_path: str = "TIGER-Lab/WebInstruct-verified"
-    math_only: bool = True
+    dataset_path: str = "anupamc/math-dataset"
+    # Data is already curated in Colab; leave False unless loading raw WebInstruct.
+    math_only: bool = False
     n_nodes: int = 1
     n_gpu: int = 4
     train_batch_size: int = 128  # alias used as batch_size
@@ -233,10 +235,20 @@ class Config:
 def main(config: Config):
     import os as _os
 
-    wandb_key = _os.environ.get("WANDB_API_KEY", "")
-    use_wandb = bool(wandb_key) and wandb_key != "REPLACE_ME"
+    wandb_key = _os.environ.get("WANDB_API_KEY", "").strip()
+    use_wandb = bool(wandb_key) and wandb_key not in ("REPLACE_ME", "your-key-here")
     if not use_wandb:
         _os.environ.pop("WANDB_API_KEY", None)
+        print(
+            "[wandb] DISABLED — set WANDB_API_KEY (e.g. in ~/.tinker_env) to enable.",
+            flush=True,
+        )
+    else:
+        print(
+            f"[wandb] ENABLED — project={config.wandb_project} "
+            f"name={config.wandb_name}",
+            flush=True,
+        )
 
     ml_logger = ml_log.setup_logging(
         log_dir=config.log_path,
@@ -245,6 +257,11 @@ def main(config: Config):
         config=config,
         do_configure_logging_module=True,
     )
+    if use_wandb:
+        logger.info(
+            "Weights & Biases run initialized "
+            f"(project={config.wandb_project}, name={config.wandb_name})"
+        )
 
     tokenizer = get_tokenizer(config.model_name)
     renderer_name = model_info.get_recommended_renderer_name(config.model_name)

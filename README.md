@@ -1,6 +1,6 @@
 # APS360 — Domain-Specific GRPO for Mathematical Reasoning (Qwen3-1.7B)
 
-Zero-RL training of **`Qwen/Qwen3-1.7B`** with **Group Relative Policy Optimization (GRPO)** on a **mathematics-only** slice of [WebInstruct-verified](https://huggingface.co/datasets/TIGER-Lab/WebInstruct-verified).
+Zero-RL training of **`Qwen/Qwen3-1.7B`** with **Group Relative Policy Optimization (GRPO)** on [anupamc/math-dataset](https://huggingface.co/datasets/anupamc/math-dataset) (prepared in Colab; ~9k train / ~1k test).
 
 Rewards come from an LLM-as-a-judge verifier ([TIGER-Lab/general-verifier](https://huggingface.co/TIGER-Lab/general-verifier)). Policy updates run via the [Tinker](https://thinkingmachines.ai) API; local GPUs host the verifier (vLLM).
 
@@ -11,7 +11,7 @@ Rewards come from an LLM-as-a-judge verifier ([TIGER-Lab/general-verifier](https
 ```
 scripts/
   train_grpo_qwen3.py     # main GRPO training loop (Qwen3-1.7B)
-  prepare_math_data.py    # optional: export math parquet
+  prepare_math_data.py    # optional: mirror anupamc/math-dataset to parquet
   merge_lora.py           # merge Tinker LoRA into base for local eval
 evaluation/
   eval_mmlupro.py         # MMLU-Pro via vLLM
@@ -43,14 +43,19 @@ export WANDB_API_KEY="..."
 python scripts/train_grpo_qwen3.py \
   log_path=./log_qwen3_1p7b_math_grpo \
   model_name=Qwen/Qwen3-1.7B \
-  math_only=True
+  dataset_path=anupamc/math-dataset \
+  math_only=False
 ```
+
 
 Or submit (1 node × 4 GPUs for the verifier):
 
 ```bash
+# Ensure ~/.tinker_env has TINKER_API_KEY and WANDB_API_KEY
 sbatch slurm/run_train_qwen3_1p7b.slurm
 ```
+
+W&B is initialized automatically when `WANDB_API_KEY` is set (project `APS360-Qwen3-GRPO`, run `qwen3-1.7b-math-grpo`).
 
 ### Default training hyperparameters (Table 1)
 
@@ -70,7 +75,7 @@ sbatch slurm/run_train_qwen3_1p7b.slurm
 | `temperature` | 1.0 |
 | `rollout_n` | 8 |
 | `kl_coeff` | 0.01 |
-| Dataset | WebInstruct-verified, **math-only filter** |
+| Dataset | [`anupamc/math-dataset`](https://huggingface.co/datasets/anupamc/math-dataset) (Colab-prepared) |
 | LoRA rank | 32 |
 | Loss | PPO + group-relative advantages + KL-vs-base on advantages |
 

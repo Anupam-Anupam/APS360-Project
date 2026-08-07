@@ -9,5 +9,6 @@ peft>=0.14.0
 accelerate
 safetensors
 huggingface_hub
+wandb
 pandas
 tabulate
