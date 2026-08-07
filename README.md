@@ -4,17 +4,18 @@ Zero-RL training of **`Qwen/Qwen3-1.7B-Base`** with **Group Relative Policy Opti
 
 Rewards come from an LLM-as-a-judge verifier ([TIGER-Lab/general-verifier](https://huggingface.co/TIGER-Lab/general-verifier)). Policy updates run via the [Tinker](https://thinkingmachines.ai) API; one local GPU hosts the verifier.
 
-**Research question:** Does a math-only GRPO signal beat broader cross-domain RL on math benchmarks (GSM8K, MATH, AIME, MMLU-Pro math), and how much out-of-domain ability (e.g. GPQA) is lost?
+**Research question:** Does a math-only GRPO signal beat broader cross-domain RL on math benchmarks (GSM8K, MATH, AIME, MMLU-Pro), and how much out-of-domain ability is lost?
 
 ## Repo layout
 
 ```
 scripts/
-  train_grpo_qwen.py      # main GRPO training loop (Qwen3-1.7B)
+  train_grpo_qwen3.py     # main GRPO training loop (Qwen3-1.7B)
+  prepare_math_data.py    # optional: export math parquet
   merge_lora.py           # merge Tinker LoRA into base for local eval
 evaluation/
   eval_mmlupro.py         # MMLU-Pro via vLLM
-  simple_evals/           # GSM8K, MATH, AIME, AMC, Minerva, Olympiad, GPQA
+  simple_evals/           # GSM8K, MATH, AIME, AMC, Minerva, Olympiad
 slurm/
   run_train_qwen3_1p7b.slurm
 requirements.txt
@@ -39,7 +40,7 @@ export WANDB_API_KEY="..."
 ## Train
 
 ```bash
-python scripts/train_grpo_qwen.py \
+python scripts/train_grpo_qwen3.py \
   log_path=./log_qwen3_1p7b_math_grpo \
   model_name=Qwen/Qwen3-1.7B-Base \
   math_only=True \

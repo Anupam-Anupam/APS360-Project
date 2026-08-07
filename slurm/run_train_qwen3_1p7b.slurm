@@ -39,7 +39,7 @@ cd "$REPO_ROOT"
 LOG_DIR="${LOG_DIR:-./log_qwen3_1p7b_math_grpo}"
 mkdir -p "$LOG_DIR"
 
-python scripts/train_grpo_qwen.py \
+python scripts/train_grpo_qwen3.py \
   log_path="$LOG_DIR" \
   model_name="Qwen/Qwen3-1.7B-Base" \
   math_only=True

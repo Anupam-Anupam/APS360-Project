@@ -1,21 +1,17 @@
-# Overview
-This repository is build based on a from simple-eval
+# Math evaluation suite for APS360 (Qwen3-1.7B)
 
+Serve your merged model, then run math evals:
 
-# OpenAI API Key
-```
-config key
-```
+```bash
+vllm serve ./merged-qwen3-1p7b-math-grpo --served-model-name aps360-qwen3-1.7b-math-grpo
 
-# Eval
-```
-vllm serve TIGER-Lab/General-Reasoner-7B-preview --tensor-parallel-size 4
+python -m evaluation.simple_evals.run_simple_evals_qwen \
+  --model aps360-qwen3-1.7b-math-grpo \
+  --evals gsm8k,math,aime24,amc
 ```
 
-```
-python -m evaluation.simple-evals.run_simple_evals_qwen --model General-Reasoner-7B-preview
-```
+Baseline:
 
-```
-python -m evaluation.eval_bbeh --model_path TIGER-Lab/General-Reasoner-7B-preview --output_file output-bbeh-General-Reasoner-7B-preview.json
+```bash
+python -m evaluation.simple_evals.run_simple_evals_qwen --model Qwen3-1.7B-Base --evals gsm8k,math
 ```

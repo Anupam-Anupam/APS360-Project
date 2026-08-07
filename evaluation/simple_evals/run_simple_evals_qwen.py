@@ -2,7 +2,6 @@ import json
 import argparse
 import pandas as pd
 from . import common
-from .gpqa_eval_qwen import GPQAEvalQwen
 from .aime24_eval_qwen import AIME24EvalQwen
 from .aime25_eval_qwen import AIME25EvalQwen
 from .gsm8k_eval_qwen import Gsm8kEvalQwen
@@ -130,8 +129,6 @@ def main():
                     n_repeats=1,
                     num_examples=num_examples,
                 )
-            case "gpqa":
-                return GPQAEvalQwen(n_repeats=1, num_examples=num_examples)
             case _:
                 raise Exception(f"Unrecognized eval type: {eval_name}")
 
