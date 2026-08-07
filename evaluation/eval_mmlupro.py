@@ -61,7 +61,7 @@ def get_prediction(output):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model_path", type=str, required=True, help="HF id or local path (e.g. Qwen/Qwen3-1.7B-Base or merged checkpoint)")
+    parser.add_argument("--model_path", type=str, required=True, help="HF id or local path (e.g. Qwen/Qwen3-1.7B or merged checkpoint)")
     parser.add_argument("--output_file", type=str, default="outputs-mmlupro-qwen3-1.7b.json", help="File to save results")
     parser.add_argument("--tensor_parallel_size", type=int, default=1, help="vLLM tensor parallel size (1 is enough for 1.7B)")
     args = parser.parse_args()

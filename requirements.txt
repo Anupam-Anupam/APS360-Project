@@ -4,7 +4,7 @@ chz>=0.4.0
 torch>=2.4.0
 transformers>=4.50.0
 datasets>=3.0.0
-vllm>=0.6.0
+vllm==0.25.1
 peft>=0.14.0
 accelerate
 safetensors

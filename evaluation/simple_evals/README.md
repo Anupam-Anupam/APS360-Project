@@ -3,15 +3,15 @@
 Serve your merged model, then run math evals:
 
 ```bash
-vllm serve ./merged-qwen3-1p7b-math-grpo --served-model-name aps360-qwen3-1.7b-math-grpo
+vllm serve ./merged-qwen3-1.7b-math-grpo --served-model-name aps360-qwen3-1.7b-math-grpo
 
 python -m evaluation.simple_evals.run_simple_evals_qwen \
   --model aps360-qwen3-1.7b-math-grpo \
   --evals gsm8k,math,aime24,amc
 ```
 
-Baseline:
+Baseline (`Qwen/Qwen3-1.7B`):
 
 ```bash
-python -m evaluation.simple_evals.run_simple_evals_qwen --model Qwen3-1.7B-Base --evals gsm8k,math
+python -m evaluation.simple_evals.run_simple_evals_qwen --model Qwen3-1.7B --evals gsm8k,math
 ```

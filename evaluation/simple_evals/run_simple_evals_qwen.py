@@ -39,23 +39,17 @@ def main():
     args = parser.parse_args()
 
     models = {
-        "Qwen3-1.7B-Base": QwenChatCompletionSampler(
-            model="Qwen/Qwen3-1.7B-Base",
-            system_message=OPENAI_SYSTEM_MESSAGE_API,
-            temperature=1,
-            max_tokens=4096,
-        ),
-        "Qwen3-1.7B-Instruct": QwenChatCompletionSampler(
+        "Qwen3-1.7B": QwenChatCompletionSampler(
             model="Qwen/Qwen3-1.7B",
             system_message=OPENAI_SYSTEM_MESSAGE_API,
-            temperature=1,
-            max_tokens=4096,
+            temperature=1.0,
+            max_tokens=128,
         ),
         "aps360-qwen3-1.7b-math-grpo": QwenChatCompletionSampler(
             model="aps360-qwen3-1.7b-math-grpo",
             system_message=OPENAI_SYSTEM_MESSAGE_API,
-            temperature=1,
-            max_tokens=4096,
+            temperature=1.0,
+            max_tokens=128,
         ),
     }
 
@@ -64,8 +58,8 @@ def main():
             "custom": QwenChatCompletionSampler(
                 model=args.model_path,
                 system_message=OPENAI_SYSTEM_MESSAGE_API,
-                temperature=1,
-                max_tokens=4096,
+                temperature=1.0,
+                max_tokens=128,
             )
         }
 

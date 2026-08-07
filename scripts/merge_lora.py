@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Merge a Tinker LoRA adapter into Qwen3-1.7B-Base and save a HF folder for vLLM eval."""
+"""Merge a Tinker LoRA adapter into Qwen/Qwen3-1.7B and save a HF folder for vLLM eval."""
 from __future__ import annotations
 
 import argparse
@@ -10,7 +10,7 @@ import torch
 from peft import PeftModel
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-DEFAULT_BASE = "Qwen/Qwen3-1.7B-Base"
+DEFAULT_BASE = "Qwen/Qwen3-1.7B"
 
 
 def main() -> int:

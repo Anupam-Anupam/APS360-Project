@@ -1,8 +1,12 @@
 """
-APS360 — GRPO (Zero-RL) training for Qwen3-1.7B-Base on mathematics-only data.
+APS360 — GRPO (Zero-RL) training for Qwen/Qwen3-1.7B on mathematics-only data.
 
 Uses the Tinker API for LoRA updates and a local vLLM verifier
 (TIGER-Lab/general-verifier) for LLM-as-a-judge rewards.
+
+Hyperparameters align with the APS360 training settings table
+(n_nodes=1, n_gpu=4, train_batch_size=128, max_prompt=384,
+max_response=128, lr=5e-7, rollout_n=8, clip_ratio=0.3, kl=0.01).
 
 Adapted from tinker-cookbook rl_loop.py and the General-Reasoner verifier protocol.
 """
@@ -106,8 +110,12 @@ def is_math_example(example: dict) -> bool:
 
 
 class GeneralVerifier:
-    def __init__(self, model_name: str):
-        self.llm = LLM(model=model_name, gpu_memory_utilization=0.7)
+    def __init__(self, model_name: str, tensor_parallel_size: int = 1):
+        self.llm = LLM(
+            model=model_name,
+            gpu_memory_utilization=0.7,
+            tensor_parallel_size=tensor_parallel_size,
+        )
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
         self.sampling_params = SamplingParams(temperature=0, max_tokens=2048)
 
@@ -146,19 +154,74 @@ class GeneralVerifier:
         return rewards
 
 
+def incorporate_kl_penalty_sync(
+    data: list[types.Datum],
+    base_sampling_client: tinker.SamplingClient,
+    kl_penalty_coef: float,
+) -> dict[str, float]:
+    """Adjust advantages in-place with KL vs base model (sync Tinker API)."""
+    full_seqs = [
+        datum.model_input.append_int(int(datum.loss_fn_inputs["target_tokens"].data[-1]))
+        for datum in data
+    ]
+    base_futures = [base_sampling_client.compute_logprobs(seq) for seq in full_seqs]
+    base_logprobs = [fut.result() for fut in base_futures]
+
+    sampled_logprobs = [d.loss_fn_inputs["logprobs"].to_torch() for d in data]
+    masks = [d.loss_fn_inputs["mask"].to_torch().float() for d in data]
+    logprob_diffs = []
+    adj_masks = []
+    for base_lp, sampled_lp, mask in zip(base_logprobs, sampled_logprobs, masks):
+        # base_lp[0] is None (no prev token); align with target positions via [1:]
+        base_t = torch.tensor(
+            [0.0 if x is None else float(x) for x in base_lp[1:]], dtype=torch.float32
+        )
+        n = min(len(base_t), len(sampled_lp), len(mask))
+        base_t = base_t[:n]
+        sampled_lp = sampled_lp[:n]
+        mask = mask[:n]
+        logprob_diffs.append((sampled_lp - base_t) * mask)
+        adj_masks.append(mask)
+
+    mask_sum = sum(float(m.sum()) for m in adj_masks)
+    if mask_sum <= 0:
+        return {"kl_policy_base": 0.0}
+    avg_logp_diff = sum(float(d.sum()) for d in logprob_diffs) / mask_sum
+    for i, datum in enumerate(data):
+        adv = datum.loss_fn_inputs["advantages"].to_torch()
+        n = len(adj_masks[i])
+        kl_adv = kl_penalty_coef * adj_masks[i] * (avg_logp_diff - logprob_diffs[i])
+        if len(adv) != n:
+            adv = adv[:n]
+            kl_adv = kl_adv[: min(len(kl_adv), n)]
+        datum.loss_fn_inputs["advantages"] = TensorData.from_torch(adv + kl_adv)
+    return {"kl_policy_base": float(avg_logp_diff)}
+
+
 @chz.chz
 class Config:
+    # Matches APS360 Table 1 training settings
     base_url: str | None = None
     log_path: str = "./log_qwen3_1p7b_math_grpo"
-    model_name: str = "Qwen/Qwen3-1.7B-Base"
+    model_name: str = "Qwen/Qwen3-1.7B"  # backbone_hgf_id
     dataset_path: str = "TIGER-Lab/WebInstruct-verified"
     math_only: bool = True
+    n_nodes: int = 1
+    n_gpu: int = 4
+    train_batch_size: int = 128  # alias used as batch_size
     batch_size: int = 128
-    group_size: int = 8
-    learning_rate: float = 4e-5
-    max_prompt_length: int = 1024
-    max_tokens: int = 4096
+    max_prompt_length: int = 384
+    max_response_length: int = 128
+    max_tokens: int = 128  # = max_response_length
+    learning_rate: float = 5e-7
+    ppo_micro_batch_size_per_gpu: int = 4
+    ppo_mini_batch_size: int = 64
+    clip_ratio_low: float = 0.3
+    clip_ratio_high: float = 0.3
     temperature: float = 1.0
+    rollout_n: int = 8
+    group_size: int = 8  # = rollout_n
+    kl_coeff: float = 0.01
     lora_rank: int = 32
     save_every: int = 20
     total_epochs: int = 1
@@ -188,7 +251,9 @@ def main(config: Config):
     renderer = renderers.get_renderer(renderer_name, tokenizer)
     logger.info(f"Using renderer: {renderer_name}")
 
-    verifier = GeneralVerifier(config.verifier_name)
+    verifier = GeneralVerifier(
+        config.verifier_name, tensor_parallel_size=max(1, config.n_gpu)
+    )
 
     logger.info(f"Loading dataset: {config.dataset_path}")
     dataset = datasets.load_dataset(config.dataset_path)
@@ -217,7 +282,11 @@ def main(config: Config):
         f"(max_prompt_length={config.max_prompt_length})"
     )
 
-    n_batches_per_epoch = max(1, len(train_dataset) // config.batch_size)
+    batch_size = config.train_batch_size
+    group_size = config.rollout_n
+    max_tokens = config.max_response_length
+
+    n_batches_per_epoch = max(1, len(train_dataset) // batch_size)
     n_train_batches = n_batches_per_epoch * config.total_epochs
 
     service_client = tinker.ServiceClient(base_url=config.base_url)
@@ -234,8 +303,9 @@ def main(config: Config):
         )
         start_batch = 0
 
+    # Table aliases already resolved above as batch_size / group_size / max_tokens
     sampling_params = tinker.types.SamplingParams(
-        max_tokens=config.max_tokens,
+        max_tokens=max_tokens,
         temperature=config.temperature,
         stop=renderer.get_stop_sequences(),
     )
@@ -243,10 +313,30 @@ def main(config: Config):
         learning_rate=config.learning_rate, beta1=0.9, beta2=0.95, eps=1e-8
     )
 
+    # PPO clip thresholds from clip_ratio ε (thresholds = 1 ± ε)
+    clip_low_threshold = 1.0 - config.clip_ratio_low
+    clip_high_threshold = 1.0 + config.clip_ratio_high
+    loss_fn_config = {
+        "clip_low_threshold": clip_low_threshold,
+        "clip_high_threshold": clip_high_threshold,
+    }
+
+    # Base-model sampler for KL-vs-reference advantage adjustment (kl_coeff)
+    base_sampling_client = (
+        service_client.create_sampling_client(base_model=config.model_name)
+        if config.kl_coeff > 0
+        else None
+    )
+
     logger.info(
-        f"Training Qwen3-1.7B for {n_train_batches} steps "
+        f"Training {config.model_name} for {n_train_batches} steps "
         f"({config.total_epochs} epoch(s) x {n_batches_per_epoch} batches); "
-        f"train_rows={len(train_dataset)}, batch_size={config.batch_size}"
+        f"train_rows={len(train_dataset)}, batch_size={batch_size}, "
+        f"rollout_n={group_size}, lr={config.learning_rate}, "
+        f"max_prompt={config.max_prompt_length}, max_response={max_tokens}, "
+        f"clip=[{clip_low_threshold:.2f},{clip_high_threshold:.2f}], "
+        f"kl_coeff={config.kl_coeff}, ppo_mini_batch={config.ppo_mini_batch_size}, "
+        f"n_gpu={config.n_gpu}"
     )
 
     for batch_idx in range(start_batch, n_train_batches):
@@ -269,8 +359,8 @@ def main(config: Config):
                 loop_state={"batch": batch_idx},
             )
 
-        batch_start = within_epoch * config.batch_size
-        batch_end = min((within_epoch + 1) * config.batch_size, len(train_dataset))
+        batch_start = within_epoch * batch_size
+        batch_end = min((within_epoch + 1) * batch_size, len(train_dataset))
         batch_rows = train_dataset.select(range(batch_start, batch_end))
 
         sampling_path = (
@@ -296,7 +386,7 @@ def main(config: Config):
                     num_samples=1,
                     sampling_params=sampling_params,
                 )
-                for _ in range(config.group_size)
+                for _ in range(group_size)
             ]
             batch_futures.append(futures)
             batch_prompts.append(prompt_tokens)
@@ -360,6 +450,7 @@ def main(config: Config):
                 all_advantages = [0.0] * ob_len + [advantage] * (
                     len(input_tokens) - ob_len
                 )
+                all_mask = [0.0] * ob_len + [1.0] * (len(input_tokens) - ob_len)
                 training_datums.append(
                     types.Datum(
                         model_input=types.ModelInput.from_ints(tokens=input_tokens),
@@ -373,22 +464,42 @@ def main(config: Config):
                             "advantages": TensorData.from_torch(
                                 torch.tensor(all_advantages)
                             ),
+                            "mask": TensorData.from_torch(torch.tensor(all_mask)),
                         },
                     )
                 )
 
         if training_datums:
-            fwd_bwd_future = training_client.forward_backward(
-                training_datums, loss_fn="importance_sampling"
-            )
-            optim_step_future = training_client.optim_step(adam_params)
-            _ = fwd_bwd_future.result()
-            _ = optim_step_future.result()
+            if base_sampling_client is not None:
+                kl_metrics = incorporate_kl_penalty_sync(
+                    training_datums,
+                    base_sampling_client,
+                    config.kl_coeff,
+                )
+                metrics.update(kl_metrics)
+
+            # PPO mini-batches (Table 1: ppo_mini_batch_size=64)
+            mini = max(1, config.ppo_mini_batch_size)
+            for i in range(0, len(training_datums), mini):
+                chunk = training_datums[i : i + mini]
+                fwd_bwd_future = training_client.forward_backward(
+                    chunk,
+                    loss_fn="ppo",
+                    loss_fn_config=loss_fn_config,
+                )
+                optim_step_future = training_client.optim_step(adam_params)
+                _ = fwd_bwd_future.result()
+                _ = optim_step_future.result()
 
         metrics["time/total"] = time.time() - t_start
         metrics["reward/mean"] = (
             sum(batch_rewards) / len(batch_rewards) if batch_rewards else 0.0
         )
+        metrics["train/kl_coeff"] = config.kl_coeff
+        metrics["train/clip_low"] = clip_low_threshold
+        metrics["train/clip_high"] = clip_high_threshold
+        metrics["train/ppo_mini_batch_size"] = float(config.ppo_mini_batch_size)
+        metrics["train/n_datums"] = float(len(training_datums))
         ml_logger.log_metrics(metrics, step=batch_idx)
 
     checkpoint_utils.save_checkpoint(
