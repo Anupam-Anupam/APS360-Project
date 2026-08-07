@@ -100,6 +100,8 @@ python -m evaluation.eval_mmlupro \
   --output_file outputs-mmlupro.json
 ```
 
+Saved eval logs can be tracked under `evaluation/evals/` (example: `evaluation/evals/mmlupro-job-21662030.out`).
+
 **Math suite (served chat API):**
 
 ```bash

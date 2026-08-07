@@ -1,0 +1,71 @@
+=== Job Info ===
+Job ID: 21662030
+Node: fc10510
+Tue Aug 1 11:08:06 PM PST 2026
+=== Environment Info ===
+Python 3.11.5
+PyTorch: 2.9.0
+CUDA: True
+GPUs: 1
+=== Running MMLU-Pro Evaluation ===
+INFO 08-01 23:13:12 [utils.py:253] non-default args: {'seed': None, 'disable_log_stats': True, 'model': './merged_model'}
+WARNING 08-01 23:13:12 [arg_utils.py:1175] `seed=None` is equivalent to `seed=0` in V1 Engine. You will no longer be allowed to pass `None` in v0.13.
+INFO 08-01 23:13:30 [model.py:637] Resolved architecture: Qwen3ForCausalLM
+INFO 08-01 23:13:30 [model.py:2086] Downcasting torch.float32 to torch.bfloat16.
+INFO 08-01 23:13:30 [model.py:1750] Using max model len 32768
+INFO 08-01 23:13:49 [scheduler.py:228] Chunked prefill is enabled with max_num_batched_tokens=16384.
+INFO 08-01 23:13:50 [core.py:93] Initializing a V1 LLM engine (v0.12.0) with config: model='./merged_model'
+INFO 08-01 23:14:10 [parallel_state.py:1200] world_size=1 rank=0 local_rank=0 backend=nccl
+INFO 08-01 23:14:11 [parallel_state.py:1408] rank 0 in world size 1 is assigned as DP rank 0
+INFO 08-01 23:14:13 [gpu_model_runner.py:3467] Starting to load model ./merged_model...
+INFO 08-01 23:14:22 [cuda.py:411] Using FLASH_ATTN attention backend
+INFO 08-01 23:21:33 [default_loader.py:308] Loading weights took 429.98 seconds
+INFO 08-01 23:21:33 [gpu_model_runner.py:3549] Model loading took 15.2663 GiB memory and 439.494675 seconds
+INFO 08-01 23:22:31 [backends.py:655] Using cache directory: /home/anupam/.cache/vllm/torch_compile_cache/db378e5f21/rank_0_0/backbone
+INFO 08-01 23:22:31 [backends.py:715] Dynamo bytecode transform time: 57.75 s
+INFO 08-01 23:22:42 [backends.py:257] Cache the graph for dynamic shape for later use
+INFO 08-01 23:22:49 [backends.py:288] Compiling a graph for dynamic shape takes 17.31 s
+INFO 08-01 23:22:51 [monitor.py:34] torch.compile takes 75.06 s in total
+INFO 08-01 23:22:55 [gpu_worker.py:359] Available KV cache memory: 50.18 GiB
+INFO 08-01 23:22:55 [kv_cache_utils.py:1286] GPU KV cache size: 365,392 tokens
+INFO 08-01 23:22:55 [kv_cache_utils.py:1291] Maximum concurrency for 32,768 tokens per request: 11.15x
+INFO 08-01 23:23:01 [gpu_model_runner.py:4466] Graph capturing finished in 5 secs, took -1.64 GiB
+INFO 08-01 23:23:01 [core.py:254] init engine (profile, create kv cache, warmup model) took 87.29 seconds
+INFO 08-01 23:23:02 [llm.py:343] Supported tasks: ['generate']
+----------------- Start Answering -------------------
+computer science: 0.7146
+math: 0.8527
+chemistry: 0.7359
+engineering: 0.5666
+law: 0.3597
+biology: 0.8229
+health: 0.6479
+physics: 0.7152
+business: 0.7452
+philosophy: 0.5551
+economics: 0.7844
+other: 0.6006
+psychology: 0.7080
+history: 0.5328
+
+----- Accuracy Report -----
+computer science: 293/410 -> 71.46% accuracy
+math: 1152/1351 -> 85.27% accuracy
+chemistry: 833/1132 -> 73.59% accuracy
+engineering: 549/969 -> 56.66% accuracy
+law: 396/1101 -> 35.97% accuracy
+biology: 590/717 -> 82.29% accuracy
+health: 530/818 -> 64.79% accuracy
+physics: 929/1299 -> 71.52% accuracy
+business: 588/789 -> 74.52% accuracy
+philosophy: 277/499 -> 55.51% accuracy
+economics: 662/844 -> 78.44% accuracy
+other: 555/924 -> 60.06% accuracy
+psychology: 565/798 -> 70.80% accuracy
+history: 203/381 -> 53.28% accuracy
+
+Micro Average Accuracy: 67.50%
+Macro Average Accuracy: 66.73%
+ERROR 08-01 23:53:43 [core_client.py:600] Engine core proc EngineCore_DP0 died unexpectedly, shutting down client.
+=== Job Complete ===
+Tue Aug 1 11:53:46 PM PST 2026
