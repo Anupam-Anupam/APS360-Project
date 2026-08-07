@@ -75,7 +75,8 @@ W&B is initialized automatically when `WANDB_API_KEY` is set (project `APS360-Qw
 | `temperature` | 1.0 |
 | `rollout_n` | 8 |
 | `kl_coeff` | 0.01 |
-| Dataset | [`anupamc/math-dataset`](https://huggingface.co/datasets/anupamc/math-dataset) (Colab-prepared) |
+| Dataset | [`anupamc/math-dataset`](https://huggingface.co/datasets/anupamc/math-dataset) (Colab-prepared; ~9k train / ~1k test) |
+| `total_epochs` | 19 (~1.3k steps at batch 128) |
 | LoRA rank | 32 |
 | Loss | PPO + group-relative advantages + KL-vs-base on advantages |
 
