@@ -82,6 +82,7 @@ python scripts/train_grpo_qwen3.py \
   temperature=1.0 \
   rollout_n=8 \
   kl_coeff=0.01 \
+  total_epochs=19 \
   wandb_project="APS360-Qwen3-GRPO" \
   wandb_name="qwen3-1.7b-math-grpo"
 

@@ -226,7 +226,7 @@ class Config:
     kl_coeff: float = 0.01
     lora_rank: int = 32
     save_every: int = 20
-    total_epochs: int = 1
+    total_epochs: int = 19
     verifier_name: str = "TIGER-Lab/general-verifier"
     wandb_project: str | None = "APS360-Qwen3-GRPO"
     wandb_name: str | None = "qwen3-1.7b-math-grpo"
